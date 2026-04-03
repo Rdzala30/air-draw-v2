@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Air Draw — Gesture Drawing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <div class="loading-content">
+      <div class="logo-container">
+        <svg class="logo-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="45" stroke="url(#logoGrad)" stroke-width="4" fill="none"/>
+          <path d="M30 70 Q50 20 70 70" stroke="url(#logoGrad)" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <circle cx="50" cy="35" r="8" fill="url(#logoGrad)"/>
+          <defs>
+            <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#00FFFF"/>
+              <stop offset="100%" stop-color="#FF00FF"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <h1 class="loading-title">AIR DRAW</h1>
+      <p class="loading-subtitle">Hand Gesture Drawing Experience</p>
+      <div class="progress-container">
+        <div class="progress-bar"></div>
+      </div>
+      <p class="loading-hint">Initializing camera &amp; hand tracking...</p>
+    </div>
+  </div>
+
+  <!-- Hidden Webcam Video -->
+  <video id="webcam" autoplay playsinline muted></video>
+
+  <!-- Canvases -->
+  <canvas id="camera-canvas"></canvas>
+  <canvas id="drawing-canvas"></canvas>
+  <canvas id="ui-canvas"></canvas>
+
+  <!-- Gesture HUD -->
+  <div id="gesture-hud" class="gesture-idle">
+    <span class="gesture-emoji">✊</span>
+    <span class="gesture-label">Idle</span>
+  </div>
+
+  <!-- Cursor Dot -->
+  <div id="cursor-dot"></div>
+
+  <!-- Game HUD -->
+  <div id="game-hud">DOT 1/10 · SCORE 0</div>
+
+  <!-- FPS Counter -->
+  <div id="fps-counter">FPS: --</div>
+
+  <!-- Bottom Toolbar -->
+  <div id="toolbar">
+    <div class="toolbar-section colors-section">
+      <button class="color-swatch active" data-color="#00FFFF" style="background:#00FFFF" title="Cyan"></button>
+      <button class="color-swatch" data-color="#FF00FF" style="background:#FF00FF" title="Magenta"></button>
+      <button class="color-swatch" data-color="#00FF00" style="background:#00FF00" title="Lime"></button>
+      <button class="color-swatch" data-color="#0088FF" style="background:#0088FF" title="Blue"></button>
+      <button class="color-swatch" data-color="#FF69B4" style="background:#FF69B4" title="Pink"></button>
+      <button class="color-swatch" data-color="#FFD700" style="background:#FFD700" title="Gold"></button>
+      <button class="color-swatch" data-color="#9932CC" style="background:#9932CC" title="Purple"></button>
+      <button class="color-swatch" data-color="#FFFFFF" style="background:#FFFFFF" title="White"></button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="toolbar-section slider-section">
+      <label class="slider-control">
+        <span class="slider-label">Size</span>
+        <input type="range" id="thickness-slider" min="2" max="32" value="6">
+        <span class="slider-value" id="thickness-value">6px</span>
+      </label>
+      <label class="slider-control">
+        <span class="slider-label">Glow</span>
+        <input type="range" id="glow-slider" min="0" max="100" value="60">
+        <span class="slider-value" id="glow-value">60%</span>
+      </label>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="toolbar-section actions-section">
+      <button class="action-btn" id="btn-undo" title="Undo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 2-5.3L3 7"/>
+        </svg>
+      </button>
+      <button class="action-btn" id="btn-clear" title="Clear Canvas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>
+        </svg>
+      </button>
+      <button class="action-btn" id="btn-camera" title="Toggle Camera">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+        </svg>
+      </button>
+      <button class="action-btn" id="btn-save" title="Save as PNG">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      </button>
+      <button class="action-btn" id="btn-help" title="Help">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><path d="M9 9a3 3 0 1 1 4 2.8 2 2 0 0 0-1 1.7V14"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/>
+        </svg>
+      </button>
+      <button class="action-btn" id="btn-connect-dots" title="Connect Dots">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="5" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+          <line x1="12" y1="7" x2="12" y2="10"/><line x1="14" y1="12" x2="17" y2="12"/><line x1="10" y1="12" x2="7" y2="12"/><line x1="12" y1="14" x2="12" y2="17"/>
+        </svg>
+      </button>
+      <button class="action-btn" id="btn-air-write" title="Air Write">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+          <path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/>
+        </svg>
+      </button>
+      <button class="action-btn" id="btn-trace" title="Trace Shape">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Drop Zone Overlay -->
+  <div id="drop-overlay" class="hidden">
+    <div class="drop-zone-inner">
+      <div class="drop-icon">🖼️</div>
+      <div class="drop-text">Drop image or text file here</div>
+      <div class="drop-hint">PNG · JPG · SVG · TXT</div>
+    </div>
+  </div>
+
+  <!-- Onboarding Modal -->
+  <div id="onboarding-modal">
+    <div class="onboarding-content">
+      <h2 class="onboarding-title">How to Draw</h2>
+      <p class="onboarding-subtitle">Master these hand gestures to create</p>
+      <div class="gesture-grid">
+        <div class="gesture-card">
+          <div class="gesture-icon">☝️</div>
+          <h3>Draw</h3>
+          <p>Point with index finger to draw on canvas</p>
+        </div>
+        <div class="gesture-card">
+          <div class="gesture-icon">✋</div>
+          <h3>Erase</h3>
+          <p>Show open palm to erase content</p>
+        </div>
+        <div class="gesture-card">
+          <div class="gesture-icon">🤏</div>
+          <h3>Pause</h3>
+          <p>Pinch fingers to pause drawing mode</p>
+        </div>
+        <div class="gesture-card">
+          <div class="gesture-icon">✊</div>
+          <h3>Idle</h3>
+          <p>Make a fist to rest without drawing</p>
+        </div>
+        <div class="gesture-card">
+          <div class="gesture-icon">🤘</div>
+          <h3>Spray</h3>
+          <p>Rock sign = spray paint</p>
+        </div>
+      </div>
+      <button id="btn-start" class="start-btn">Start Drawing</button>
+    </div>
+  </div>
+
+  <!-- MediaPipe Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+  <!-- Main Script -->
+  <script src="main.js"></script>
+</body>
+</html>
