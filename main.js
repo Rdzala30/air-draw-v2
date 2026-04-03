@@ -717,9 +717,9 @@
   ];
 
   function lmToCanvas(lm, w, h) {
-    // Returns array of {x, y} in canvas coordinates, mirrored on X
+    // Returns array of {x, y} in canvas coordinates
     return lm.map(p => ({
-      x: (1 - p.x) * w,
+      x: p.x * w,
       y: p.y * h
     }));
   }
@@ -774,12 +774,9 @@
       fpsCounter.textContent = 'FPS: ' + fpsValue;
     }
 
-    // Camera feed — mirrored
+    // Camera feed — normal (not mirrored)
     if (showCamera && results.image) {
-      ctxCamera.save();
-      ctxCamera.scale(-1, 1);
-      ctxCamera.drawImage(results.image, -w, 0, w, h);
-      ctxCamera.restore();
+      ctxCamera.drawImage(results.image, 0, 0, w, h);
     } else {
       ctxCamera.clearRect(0, 0, w, h);
     }
@@ -795,8 +792,8 @@
 
     const lm = results.multiHandLandmarks[0];
 
-    // Index fingertip (landmark 8) in canvas coords — mirrored
-    const cx = (1 - lm[8].x) * w;
+    // Index fingertip (landmark 8) in canvas coords — normal
+    const cx = lm[8].x * w;
     const cy = lm[8].y * h;
 
     // Move cursor dot
@@ -854,7 +851,7 @@
 
     } else if (gesture === 'ERASE') {
       // Use middle fingertip (landmark 9) for eraser position
-      const erX = (1 - lm[9].x) * w;
+      const erX = lm[9].x * w;
       const erY = lm[9].y * h;
       eraseAt(erX, erY, 40);
       lastX = null;
