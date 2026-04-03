@@ -501,7 +501,7 @@
     const h = maxY - minY || 1;
     const step = Math.max(1, Math.floor(points.length / 12));
     const sampled = points.filter((_, i) => i % step === 0).slice(0, 12);
-    return sampled.map(p => ({ x: (p.x - minX) / w, y: (p.y - minY) / h });
+    return sampled.map(p => ({ x: (p.x - minX) / w, y: (p.y - minY) / h }));
   }
 
   function matchLetter(normalized) {
@@ -920,30 +920,41 @@
   let camera;
 
   function initMediaPipe() {
-    hands = new Hands({
-      locateFile: function (file) {
-        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
-      }
-    });
+    // Guard: if MediaPipe globals aren't loaded, bail gracefully
+    if (typeof Hands === 'undefined' || typeof Camera === 'undefined') {
+      console.warn('MediaPipe not loaded — check CDN access');
+      return;
+    }
+    try {
+      hands = new Hands({
+        locateFile: function (file) {
+          return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+        }
+      });
 
-    hands.setOptions({
-      maxNumHands:          1,
-      modelComplexity:      1,
-      minDetectionConfidence: 0.72,
-      minTrackingConfidence:  0.65
-    });
+      hands.setOptions({
+        maxNumHands:          1,
+        modelComplexity:      1,
+        minDetectionConfidence: 0.72,
+        minTrackingConfidence:  0.65
+      });
 
-    hands.onResults(onHandResults);
+      hands.onResults(onHandResults);
 
-    camera = new Camera(webcam, {
-      onFrame: async () => {
-        await hands.send({ image: webcam });
-      },
-      width:  1280,
-      height: 720
-    });
+      camera = new Camera(webcam, {
+        onFrame: async () => {
+          await hands.send({ image: webcam });
+        },
+        width:  1280,
+        height: 720
+      });
 
-    camera.start();
+      camera.start().catch(err => {
+        console.warn('Camera start failed:', err);
+      });
+    } catch (e) {
+      console.warn('MediaPipe init error:', e);
+    }
   }
 
   /* ============================================================
@@ -951,11 +962,17 @@
   ============================================================ */
   resizeCanvases();
 
+  // Always hide loading screen after 4s, even if MediaPipe fails
   setTimeout(() => {
     loadingScr.style.display = 'none';
     onboarding.classList.remove('hidden');
-  }, 3000);
+  }, 4000);
 
-  setTimeout(initMediaPipe, 500);
+  // Try to init MediaPipe, but don't block if it fails
+  try {
+    setTimeout(initMediaPipe, 500);
+  } catch (e) {
+    console.warn('MediaPipe init deferred:', e);
+  }
 
 })();
